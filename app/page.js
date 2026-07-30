@@ -20,12 +20,33 @@ const dayPrice = (value) => Math.round((value * DAY_RATE) / 10) * 10;
 const fmt = (n) => n.toLocaleString("ru-RU");
 
 const PVZ = [
-  { name: "Ozon", color: "#0069ff" },
-  { name: "Яндекс Маркет", color: "#fc3f1d" },
-  { name: "Wildberries", color: "#cb11ab" },
+  { name: "Ozon", color: "#0069ff", logo: "/pvz/ozon.jpg" },
+  { name: "Яндекс Маркет", color: "#fc3f1d", logo: "/pvz/yandex.png" },
+  { name: "Wildberries", color: "#cb11ab", logo: "/pvz/wb.jpg" },
 ];
 
 const DAY_OPTIONS = [1, 2, 3, 7];
+
+// Картинка товара с запасным вариантом-эмодзи, если фото не подгрузилось.
+function Thumb({ src, emoji, className }) {
+  const [err, setErr] = useState(false);
+  if (err || !src) {
+    return (
+      <span className={className} aria-hidden="true">
+        {emoji}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      className={className}
+      loading="lazy"
+      onError={() => setErr(true)}
+    />
+  );
+}
 
 export default function Page() {
   const [modalItem, setModalItem] = useState(null);
@@ -170,7 +191,7 @@ export default function Page() {
             <p>Заберёте в пункте выдачи в своём районе</p>
             {ITEMS.slice(0, 3).map((it) => (
               <div className="mini-item" key={it.id}>
-                <span className="mini-item__emoji">{it.emoji}</span>
+                <Thumb src={`/items/${it.id}.jpg`} emoji={it.emoji} className="mini-item__emoji" />
                 <div className="mini-item__body">
                   <div className="mini-item__name">{it.name}</div>
                   <div className="mini-item__meta">
@@ -197,7 +218,7 @@ export default function Page() {
           <span className="pickup-strip__label">Заберёте в вашем пункте выдачи:</span>
           {PVZ.map((p) => (
             <span className="pvz" key={p.name}>
-              <span className="pvz__dot" style={{ background: p.color }} />
+              <img className="pvz__logo" src={p.logo} alt={p.name} />
               {p.name}
             </span>
           ))}
@@ -288,8 +309,8 @@ export default function Page() {
           <div className="catalog__grid">
             {ITEMS.map((it) => (
               <div className="product" key={it.id}>
-                <div className="product__top">
-                  <span className="product__emoji">{it.emoji}</span>
+                <div className="product__media">
+                  <Thumb src={`/items/${it.id}.jpg`} emoji={it.emoji} className="product__img" />
                   {it.badge && (
                     <span className={`badge${it.badge === "Часто спрашивают" ? " badge--warn" : ""}`}>
                       {it.badge}
@@ -466,7 +487,7 @@ export default function Page() {
             {step === "config" && (
               <>
                 <div className="modal__head">
-                  <span className="modal__emoji">{modalItem.emoji}</span>
+                  <Thumb src={`/items/${modalItem.id}.jpg`} emoji={modalItem.emoji} className="modal__emoji" />
                   <div>
                     <p className="modal__title">{modalItem.name}</p>
                     <span className="modal__cat">{modalItem.cat}</span>
