@@ -1,33 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { track } from "@vercel/analytics";
 
 const ITEMS = [
-  { id: "perf", emoji: "🔩", name: "Перфоратор", cat: "Инструмент", value: 12000, badge: "Хит района" },
-  { id: "drill", emoji: "🪛", name: "Дрель-шуруповёрт", cat: "Инструмент", value: 6000 },
-  { id: "washer", emoji: "💦", name: "Мойка высокого давления", cat: "Для дома", value: 14000 },
-  { id: "steamer", emoji: "👕", name: "Отпариватель для одежды", cat: "Для дома", value: 8000, badge: "Часто спрашивают" },
-  { id: "vacuum", emoji: "🧽", name: "Моющий пылесос", cat: "Для дома", value: 20000 },
-  { id: "projector", emoji: "📽️", name: "Проектор", cat: "Техника", value: 25000 },
-  { id: "stroller", emoji: "🍼", name: "Детская коляска", cat: "Детям", value: 18000, badge: "Хит района" },
-  { id: "carseat", emoji: "🚗", name: "Автокресло", cat: "Детям", value: 10000 },
-  { id: "tent", emoji: "⛺", name: "Палатка 4-местная", cat: "Отдых", value: 12000 },
+  { id: "perf", name: "Перфоратор", cat: "Инструмент", value: 12000, badge: "Хит района", emoji: "🔩" },
+  { id: "drill", name: "Дрель-шуруповёрт", cat: "Инструмент", value: 6000, emoji: "🪛" },
+  { id: "washer", name: "Мойка высокого давления", cat: "Для дома", value: 14000, emoji: "💦" },
+  { id: "steamer", name: "Отпариватель для одежды", cat: "Для дома", value: 8000, badge: "Часто спрашивают", emoji: "👕" },
+  { id: "vacuum", name: "Моющий пылесос", cat: "Для дома", value: 20000, emoji: "🧽" },
+  { id: "projector", name: "Проектор", cat: "Техника", value: 25000, emoji: "📽️" },
+  { id: "stroller", name: "Детская коляска", cat: "Детям", value: 18000, badge: "Хит района", emoji: "🍼" },
+  { id: "carseat", name: "Автокресло", cat: "Детям", value: 10000, emoji: "🚗" },
+  { id: "tent", name: "Палатка 4-местная", cat: "Отдых", value: 12000, emoji: "⛺" },
 ];
 
-const DAY_RATE = 0.05; // 5% от стоимости вещи за день
-const dayPrice = (value) => Math.round((value * DAY_RATE) / 10) * 10;
-const fmt = (n) => n.toLocaleString("ru-RU");
+const CATS = ["Все", "Инструмент", "Для дома", "Техника", "Детям", "Отдых"];
 
 const PVZ = [
-  { name: "Ozon", color: "#0069ff", logo: "/pvz/ozon.jpg" },
-  { name: "Яндекс Маркет", color: "#fc3f1d", logo: "/pvz/yandex.png" },
-  { name: "Wildberries", color: "#cb11ab", logo: "/pvz/wb.jpg" },
+  { name: "Ozon", logo: "/pvz/ozon.jpg" },
+  { name: "Яндекс Маркет", logo: "/pvz/yandex.png" },
+  { name: "Wildberries", logo: "/pvz/wb.jpg" },
 ];
 
 const DAY_OPTIONS = [1, 2, 3, 7];
+const DAY_RATE = 0.05;
+const dayPrice = (value) => Math.round((value * DAY_RATE) / 10) * 10;
+const fmt = (n) => n.toLocaleString("ru-RU");
+const daysWord = (d) => (d === 1 ? "день" : d < 5 ? "дня" : "дней");
 
-// Картинка товара с запасным вариантом-эмодзи, если фото не подгрузилось.
+// SVG-иконки интерфейса
+function Icon({ id, size = 20, className, style }) {
+  return (
+    <svg width={size} height={size} className={`ic ${className || ""}`} style={style} aria-hidden="true">
+      <use href={`#${id}`} />
+    </svg>
+  );
+}
+
+// Фото товара с запасным вариантом-эмодзи, если картинка не подгрузилась
 function Thumb({ src, emoji, className }) {
   const [err, setErr] = useState(false);
   if (err || !src) {
@@ -37,20 +48,86 @@ function Thumb({ src, emoji, className }) {
       </span>
     );
   }
+  return <img src={src} alt="" className={className} loading="lazy" onError={() => setErr(true)} />;
+}
+
+function IconDefs() {
   return (
-    <img
-      src={src}
-      alt=""
-      className={className}
-      loading="lazy"
-      onError={() => setErr(true)}
-    />
+    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+      <defs>
+        <symbol id="ic-search" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2.2" />
+          <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        </symbol>
+        <symbol id="ic-pin" viewBox="0 0 24 24">
+          <path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" fill="none" stroke="currentColor" strokeWidth="2" />
+          <circle cx="12" cy="10" r="2.6" fill="currentColor" />
+        </symbol>
+        <symbol id="ic-user" viewBox="0 0 24 24">
+          <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </symbol>
+        <symbol id="ic-cart" viewBox="0 0 24 24">
+          <circle cx="9" cy="20" r="1.9" fill="currentColor" />
+          <circle cx="18" cy="20" r="1.9" fill="currentColor" />
+          <path d="M3 4h3l2.4 12h10l2-8H7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        </symbol>
+        <symbol id="ic-heart" viewBox="0 0 24 24">
+          <path d="M12 20S3.5 14.5 3.5 8.8A4.3 4.3 0 0 1 12 6a4.3 4.3 0 0 1 8.5 2.8C20.5 14.5 12 20 12 20z" fill="none" stroke="currentColor" strokeWidth="2" />
+        </symbol>
+        <symbol id="ic-check" viewBox="0 0 24 24">
+          <path d="M4 12l5 5L20 6" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+        </symbol>
+        <symbol id="ic-arrow" viewBox="0 0 24 24">
+          <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </symbol>
+        <symbol id="ic-plus" viewBox="0 0 24 24">
+          <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+        </symbol>
+      </defs>
+    </svg>
+  );
+}
+
+function Brand({ onClick }) {
+  return (
+    <div className="brand" onClick={onClick}>
+      <span className="brand__mark">◆</span>
+      Рядом<span className="brand__dot">·</span>Аренда
+    </div>
+  );
+}
+
+function ProductCard({ item, onBook }) {
+  return (
+    <div className="pcard">
+      <div className="pcard__media">
+        {item.badge && <span className="pcard__badge">{item.badge}</span>}
+        <span className="pcard__fav">
+          <Icon id="ic-heart" size={18} />
+        </span>
+        <Thumb src={`/items/${item.id}.jpg`} emoji={item.emoji} className="pcard__img" />
+      </div>
+      <div className="pcard__body">
+        <div className="pcard__cat">{item.cat}</div>
+        <div className="pcard__name">{item.name}</div>
+        <div className="pcard__price">
+          <b>{fmt(dayPrice(item.value))} ₽</b>
+          <span className="pcard__unit">/день</span>
+        </div>
+        <div className="pcard__buy">вместо покупки за {fmt(item.value)} ₽</div>
+        <button className="cta btn-blue pcard__cta" onClick={() => onBook(item, "catalog")}>
+          Забронировать
+        </button>
+      </div>
+    </div>
   );
 }
 
 export default function Page() {
+  const [activeCat, setActiveCat] = useState("Все");
   const [modalItem, setModalItem] = useState(null);
-  const [step, setStep] = useState("config"); // config | loading | error | success
+  const [step, setStep] = useState("config");
   const [days, setDays] = useState(1);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
@@ -58,6 +135,14 @@ export default function Page() {
   const [pvz, setPvz] = useState("Ozon");
   const [sending, setSending] = useState(false);
   const [formErr, setFormErr] = useState("");
+
+  const filtered = useMemo(
+    () => (activeCat === "Все" ? ITEMS : ITEMS.filter((i) => i.cat === activeCat)),
+    [activeCat]
+  );
+  const featured = ITEMS.slice(0, 3);
+
+  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView();
 
   const openBooking = useCallback((item, source) => {
     setModalItem(item);
@@ -75,7 +160,6 @@ export default function Page() {
     setModalItem(null);
   }, [modalItem, step]);
 
-  // Закрытие по Escape + блокировка прокрутки фона
   useEffect(() => {
     if (!modalItem) return;
     document.body.style.overflow = "hidden";
@@ -91,7 +175,6 @@ export default function Page() {
     const total = dayPrice(modalItem.value) * days;
     track("confirm_booking", { item: modalItem.name, days, total });
     setStep("loading");
-    // Имитация обработки брони, затем «техническая ошибка» (fake-door).
     setTimeout(() => {
       setStep("error");
       track("error_shown", { item: modalItem.name });
@@ -122,7 +205,7 @@ export default function Page() {
         }),
       });
     } catch {
-      // Даже при сетевой ошибке не показываем сбой — заявка нам важнее.
+      /* заявку не теряем — пользователю показываем успех в любом случае */
     }
     track("lead_submitted", { item: modalItem.name });
     setSending(false);
@@ -131,363 +214,295 @@ export default function Page() {
 
   return (
     <>
-      {/* NAV */}
-      <header className="nav">
-        <div className="wrap nav__inner">
-          <div className="brand">
-            <span className="brand__mark">◆</span>
-            <span>Рядом.Аренда</span>
+      <IconDefs />
+
+      {/* HEADER */}
+      <header className="mhead">
+        <div className="wrap mhead__row">
+          <Brand onClick={() => scrollTo("top")} />
+          <div className="search" role="button" onClick={() => { track("nav_cta"); scrollTo("catalog"); }}>
+            <div className="search__ph">Искать вещь в вашем районе…</div>
+            <div className="cta search__btn"><Icon id="ic-search" size={22} /></div>
           </div>
-          <button
-            className="nav__cta"
-            onClick={() => {
-              track("nav_cta");
-              document.getElementById("catalog")?.scrollIntoView();
-            }}
-          >
-            Что есть рядом
-          </button>
+          <div className="loc"><Icon id="ic-pin" size={18} className="blue" style={{ color: "#0b5cff" }} />Ваш район</div>
+          <div className="iconrow">
+            <span className="iconbtn"><Icon id="ic-heart" size={21} /></span>
+            <span className="iconbtn"><Icon id="ic-cart" size={21} /></span>
+            <span className="iconbtn"><Icon id="ic-user" size={21} /></span>
+          </div>
+        </div>
+        <div className="wrap chips">
+          {CATS.map((c) => (
+            <button
+              key={c}
+              className={`chip${activeCat === c ? " chip--on" : ""}`}
+              onClick={() => { setActiveCat(c); scrollTo("catalog"); }}
+            >
+              {c}
+            </button>
+          ))}
         </div>
       </header>
 
-      {/* HERO */}
-      <section className="hero">
-        <div className="wrap hero__grid">
+      <div id="top" className="wrap" style={{ paddingTop: 24, paddingBottom: 8 }}>
+        {/* HERO */}
+        <div className="hero">
           <div>
-            <span className="pill">● Пилот в вашем районе</span>
-            <h1>Берите вещи в аренду в своём пункте выдачи</h1>
+            <div className="hero__badge">● Пилот в вашем районе</div>
+            <h1 className="hero__title">Берите вещи в аренду в своём пункте выдачи</h1>
             <p className="hero__lead">
-              Перфоратор на вечер, отпариватель на выходные, коляску на поездку.
-              Заберите по коду в ближайшем ПВЗ и верните туда же — без поездок
-              через город и без залога паспортом.
+              Перфоратор на вечер, коляску на поездку. Забираете по коду в ближайшем
+              ПВЗ и возвращаете туда же — без поездок через город и без залога паспортом.
             </p>
             <div className="hero__actions">
-              <button
-                className="btn btn--primary btn--lg"
-                onClick={() => {
-                  track("hero_cta");
-                  document.getElementById("catalog")?.scrollIntoView();
-                }}
-              >
-                Посмотреть, что есть рядом
+              <button className="cta btn-orange" onClick={() => { track("hero_cta"); scrollTo("catalog"); }}>
+                Посмотреть, что есть рядом <Icon id="ic-arrow" size={20} />
               </button>
-              <a
-                className="btn btn--ghost btn--lg"
-                href="#how"
-                onClick={() => track("hero_how")}
-              >
+              <a className="cta btn-white" href="#how" onClick={() => track("hero_how")}>
                 Как это работает
               </a>
             </div>
             <div className="hero__trust">
-              <span><b className="tick">✓</b> Оплата и залог картой</span>
-              <span><b className="tick">✓</b> Ничего не подписывать на месте</span>
-              <span><b className="tick">✓</b> 5% от цены вещи за день</span>
+              <span><Icon id="ic-check" size={18} className="blue" style={{ color: "#0b5cff" }} />Оплата и залог картой</span>
+              <span><Icon id="ic-check" size={18} />Ничего не подписывать</span>
+              <span><Icon id="ic-check" size={18} />5% от цены в день</span>
             </div>
           </div>
-
-          <div className="hero__card">
-            <h4>Уже доступно рядом</h4>
-            <p>Заберёте в пункте выдачи в своём районе</p>
-            {ITEMS.slice(0, 3).map((it) => (
-              <div className="mini-item" key={it.id}>
-                <Thumb src={`/items/${it.id}.jpg`} emoji={it.emoji} className="mini-item__emoji" />
-                <div className="mini-item__body">
-                  <div className="mini-item__name">{it.name}</div>
-                  <div className="mini-item__meta">
-                    вместо покупки за {fmt(it.value)} ₽
-                  </div>
-                </div>
-                <span className="mini-item__price">{fmt(dayPrice(it.value))} ₽/день</span>
-              </div>
-            ))}
-            <button
-              className="btn btn--primary btn--block"
-              style={{ marginTop: 6 }}
-              onClick={() => openBooking(ITEMS[0], "hero_card")}
-            >
-              Забронировать
-            </button>
+          <div className="hero__visual">
+            <div className="hero__grid">
+              <div className="hero__tile"><Thumb src="/items/perf.jpg" emoji="🔩" /></div>
+              <div className="hero__tile"><Thumb src="/items/stroller.jpg" emoji="🍼" /></div>
+              <div className="hero__tile hero__tile--wide"><Thumb src="/items/washer.jpg" emoji="💦" /></div>
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* PICKUP STRIP */}
-      <div className="pickup-strip">
-        <div className="wrap pickup-strip__inner">
-          <span className="pickup-strip__label">Заберёте в вашем пункте выдачи:</span>
+        {/* PARTNERS */}
+        <div className="partners">
+          <span>Заберёте в вашем ПВЗ:</span>
           {PVZ.map((p) => (
-            <span className="pvz" key={p.name}>
-              <img className="pvz__logo" src={p.logo} alt={p.name} />
+            <span className="partner" key={p.name}>
+              <img src={p.logo} alt={p.name} />
               {p.name}
             </span>
           ))}
         </div>
-      </div>
 
-      {/* PROBLEM */}
-      <section>
-        <div className="wrap">
-          <div className="section-head">
-            <div className="eyebrow">Знакомая ситуация</div>
-            <h2>Нужен перфоратор на три часа — а вариантов, по сути, нет</h2>
-            <p>
-              Повесить полки — дело на вечер. Но чтобы добыть инструмент, сегодня
-              приходится выбирать из неудобного:
-            </p>
+        {/* FEATURED */}
+        <div className="sec">
+          <div className="sec-head">
+            <div>
+              <div className="sec-title">Уже доступно рядом</div>
+              <div className="sec-sub">Заберёте в пункте выдачи в своём районе</div>
+            </div>
+            <span className="link-all" onClick={() => scrollTo("catalog")}>
+              Весь каталог <Icon id="ic-arrow" size={17} />
+            </span>
           </div>
-          <div className="cards-3">
-            <div className="card card--bad">
-              <div className="card__emoji">💸</div>
-              <h3>Купить</h3>
-              <p>
-                12 000 ₽ — и потом хранить вещь, которой пользуешься раз в год.
-                Деньги заморожены, место занято.
-              </p>
-            </div>
-            <div className="card card--bad">
-              <div className="card__emoji">📵</div>
-              <h3>Доска объявлений</h3>
-              <p>
-                Позвонить незнакомцу, ехать через полгорода, оставить паспорт,
-                подписать непонятную бумагу и надеяться на адекватный возврат.
-              </p>
-            </div>
-            <div className="card card--bad">
-              <div className="card__emoji">🤷</div>
-              <h3>Спросить у соседа</h3>
-              <p>Если сосед есть. И если у него есть перфоратор. И если он дома.</p>
-            </div>
+          <div className="pgrid">
+            {featured.map((it) => (
+              <ProductCard key={it.id} item={it} onBook={openBooking} />
+            ))}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* HOW */}
-      <section id="how">
+      {/* HOW IT WORKS */}
+      <div className="sec-band" id="how">
         <div className="wrap">
-          <div className="section-head">
-            <div className="eyebrow">Как это работает</div>
-            <h2>Как забрать хлеб — только это вещь напрокат</h2>
-            <p>
-              Самое ходовое лежит прямо в пункте выдачи рядом с домом. Редкое —
-              привезём со склада за день.
-            </p>
-          </div>
-          <div className="steps">
-            <div className="step">
-              <div className="step__num">1</div>
+          <div className="eyebrow">Как это работает</div>
+          <h2 className="sec-title">Как забрать хлеб — только это вещь напрокат</h2>
+          <p className="sec-sub">
+            Самое ходовое лежит прямо в пункте выдачи рядом с домом. Редкое привезём со склада за день.
+          </p>
+          <div className="how-grid">
+            <div className="how-card">
+              <div className="how-num">1</div>
               <h3>Выбираете вещь</h3>
-              <p>Смотрите, что есть в пункте выдачи в вашем районе, и бронируете с телефона.</p>
+              <p>Смотрите, что есть в пункте выдачи вашего района, и бронируете с телефона.</p>
             </div>
-            <div className="step">
-              <div className="step__num">2</div>
+            <div className="how-card">
+              <div className="how-num">2</div>
               <h3>Платите картой</h3>
               <p>Оплата и залог — картой, без наличных. Никакого паспорта незнакомцу.</p>
             </div>
-            <div className="step">
-              <div className="step__num">3</div>
+            <div className="how-card">
+              <div className="how-num">3</div>
               <h3>Забираете по коду</h3>
               <p>Заходите в пункт пешком и забираете вещь по коду. Ничего не подписывая.</p>
             </div>
-            <div className="step">
-              <div className="step__num">4</div>
+            <div className="how-card">
+              <div className="how-num">4</div>
               <h3>Возвращаете туда же</h3>
               <p>Сделали дело — вернули в тот же пункт. Залог возвращается на карту.</p>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* CATALOG */}
-      <section className="catalog" id="catalog">
-        <div className="wrap">
-          <div className="section-head">
-            <div className="eyebrow">Что можно взять</div>
-            <h2>Выберите вещь и забронируйте</h2>
-            <p>Цена — 5% от стоимости вещи за день. Заберёте в ближайшем пункте выдачи.</p>
-          </div>
-          <div className="catalog__grid">
-            {ITEMS.map((it) => (
-              <div className="product" key={it.id}>
-                <div className="product__media">
-                  <Thumb src={`/items/${it.id}.jpg`} emoji={it.emoji} className="product__img" />
-                  {it.badge && (
-                    <span className={`badge${it.badge === "Часто спрашивают" ? " badge--warn" : ""}`}>
-                      {it.badge}
-                    </span>
-                  )}
-                </div>
-                <h3>{it.name}</h3>
-                <p className="product__cat">{it.cat}</p>
-                <div className="product__price">
-                  <span className="product__day">{fmt(dayPrice(it.value))} ₽</span>
-                  <span style={{ fontSize: 13, color: "var(--ink-mute)" }}>/ день</span>
-                  <span className="product__value">{fmt(it.value)} ₽</span>
-                </div>
-                <button
-                  className="btn btn--primary btn--block"
-                  onClick={() => openBooking(it, "catalog")}
-                >
-                  Забронировать
-                </button>
-              </div>
-            ))}
-          </div>
-          <p className="catalog__note">
+      <div className="wrap sec" id="catalog">
+        <h2 className="sec-title">Выберите вещь и забронируйте</h2>
+        <p className="sec-sub" style={{ marginBottom: 24 }}>
+          Цена — 5% от стоимости вещи за день. Заберёте в ближайшем пункте выдачи.
+        </p>
+        <div className="pgrid pgrid--auto">
+          {filtered.map((it) => (
+            <ProductCard key={it.id} item={it} onBook={openBooking} />
+          ))}
+        </div>
+        <div className="cat-note">
+          <Icon id="ic-plus" size={24} className="blue" style={{ color: "#0b5cff", flex: "none" }} />
+          <div>
             Нет нужной вещи в списке? Забронируйте близкую — на пилоте мы собираем
             заявки, чтобы понять, что привозить в ваш район.
-          </p>
-        </div>
-      </section>
-
-      {/* ECONOMICS / WHY */}
-      <section>
-        <div className="wrap">
-          <div className="section-head">
-            <div className="eyebrow">Почему это выгодно</div>
-            <h2>Платите за пользование, а не за владение</h2>
           </div>
-          <div className="econ">
-            <ul className="econ__list">
-              <li>
-                <span className="econ__ic">₽</span>
-                <span><b>Не замораживаете деньги.</b> Перфоратор за 12 000 ₽ — это 600 ₽ за вечер вместо покупки, которая потом год лежит.</span>
-              </li>
-              <li>
-                <span className="econ__ic">🏠</span>
-                <span><b>Не храните дома.</b> Вещь нужна на три часа, а место в шкафу занимает годами.</span>
-              </li>
-              <li>
-                <span className="econ__ic">🚶</span>
-                <span><b>Дошли пешком.</b> Забрали в своём районе, а не поехали через город к незнакомцу.</span>
-              </li>
-              <li>
-                <span className="econ__ic">🔒</span>
-                <span><b>Понятные правила.</b> Залог и оплата картой, залог возвращается. Спорные случаи решаем мы.</span>
-              </li>
-            </ul>
-            <div className="calc">
-              <h4>Пример: перфоратор</h4>
-              <p className="calc__sub">Повесить полки — дело на один вечер</p>
-              <div className="calc__row">
+        </div>
+      </div>
+
+      {/* WHY */}
+      <div className="sec-band">
+        <div className="wrap">
+          <div className="eyebrow">Почему это выгодно</div>
+          <h2 className="sec-title">Платите за пользование, а не за владение</h2>
+          <div className="why-grid">
+            <div className="why-items">
+              <div className="why-item">
+                <div className="why-ic">₽</div>
+                <h3>Не замораживаете деньги</h3>
+                <p>600 ₽ за вечер вместо покупки за 12 000 ₽, которая потом год лежит.</p>
+              </div>
+              <div className="why-item">
+                <div className="why-ic"><Icon id="ic-pin" size={22} /></div>
+                <h3>Не храните дома</h3>
+                <p>Вещь нужна на три часа, а место в шкафу занимает годами.</p>
+              </div>
+              <div className="why-item">
+                <div className="why-ic"><Icon id="ic-check" size={22} /></div>
+                <h3>Дошли пешком</h3>
+                <p>Забрали в своём районе, а не поехали через город к незнакомцу.</p>
+              </div>
+              <div className="why-item">
+                <div className="why-ic"><Icon id="ic-heart" size={22} /></div>
+                <h3>Понятные правила</h3>
+                <p>Залог и оплата картой, залог возвращается. Спорные случаи решаем мы.</p>
+              </div>
+            </div>
+            <div className="why-card">
+              <div className="why-card__eyebrow">Пример: перфоратор</div>
+              <div className="why-card__title">Повесить полки — дело на один вечер</div>
+              <div className="why-card__row">
                 <span>Купить новый</span>
-                <b>12 000 ₽</b>
+                <span className="why-card__old">12 000 ₽</span>
               </div>
-              <div className="calc__row">
+              <div className="why-card__row">
                 <span>Аренда на 1 день</span>
-                <span className="calc__big">600 ₽</span>
+                <span className="why-card__new">600 ₽</span>
               </div>
-              <div className="calc__row" style={{ borderTop: "none", color: "var(--ink-mute)", fontSize: 13 }}>
-                <span>Экономия против покупки</span>
-                <span>в 20 раз</span>
+              <div className="why-card__save">
+                <span style={{ fontWeight: 600 }}>Экономия против покупки</span>
+                <b>в 20 раз</b>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* FAQ */}
-      <section>
-        <div className="wrap">
-          <div className="section-head">
-            <div className="eyebrow">Вопросы</div>
-            <h2>Что важно знать</h2>
-          </div>
-          <div className="faq">
-            <details className="q">
-              <summary>Какой залог и вернётся ли он?</summary>
-              <p>
-                Залог блокируется на карте при бронировании и возвращается после
-                того, как вы сдали вещь в исправном состоянии. Наличными ничего
-                платить не нужно.
-              </p>
-            </details>
-            <details className="q">
-              <summary>А если я случайно сломаю вещь?</summary>
-              <p>
-                Спорные случаи разбираем мы, а не сотрудник пункта. Мелкий износ —
-                это нормально. Серьёзные поломки покрываются из залога по понятным
-                правилам, которые вы видите заранее.
-              </p>
-            </details>
-            <details className="q">
-              <summary>Нужно ли что-то подписывать в пункте?</summary>
-              <p>
-                Нет. Бронь и договор — онлайн, в пункте вы просто забираете вещь по
-                коду, как заказ с маркетплейса.
-              </p>
-            </details>
-            <details className="q">
-              <summary>Что, если нужной вещи нет на точке?</summary>
-              <p>
-                Самое ходовое лежит прямо в пункте. Редкое привозим со склада за
-                день. Оставьте заявку — так мы понимаем, что везти в ваш район.
-              </p>
-            </details>
-            <details className="q">
-              <summary>В каких пунктах можно забрать?</summary>
-              <p>
-                В обычных пунктах выдачи заказов рядом с домом — Ozon, Яндекс Маркет
-                или Wildberries. Конкретный адрес подскажем при подтверждении брони.
-              </p>
-            </details>
-          </div>
+      <div className="wrap sec">
+        <h2 className="faq-title">Что важно знать</h2>
+        <div className="faq">
+          <details className="q" open>
+            <summary>Какой залог и вернётся ли он?<Icon id="ic-plus" size={20} /></summary>
+            <p>
+              Залог блокируется на карте при бронировании и возвращается после того,
+              как вы сдали вещь в исправном состоянии. Наличными ничего платить не нужно.
+            </p>
+          </details>
+          <details className="q">
+            <summary>А если я случайно сломаю вещь?<Icon id="ic-plus" size={20} /></summary>
+            <p>
+              Спорные случаи разбираем мы, а не сотрудник пункта. Мелкий износ — это
+              нормально. Серьёзные поломки покрываются из залога по понятным правилам,
+              которые вы видите заранее.
+            </p>
+          </details>
+          <details className="q">
+            <summary>Нужно ли что-то подписывать в пункте?<Icon id="ic-plus" size={20} /></summary>
+            <p>
+              Нет. Бронь и договор — онлайн, в пункте вы просто забираете вещь по коду,
+              как заказ с маркетплейса.
+            </p>
+          </details>
+          <details className="q">
+            <summary>Что, если нужной вещи нет на точке?<Icon id="ic-plus" size={20} /></summary>
+            <p>
+              Самое ходовое лежит прямо в пункте. Редкое привозим со склада за день.
+              Оставьте заявку — так мы понимаем, что везти в ваш район.
+            </p>
+          </details>
+          <details className="q">
+            <summary>В каких пунктах можно забрать?<Icon id="ic-plus" size={20} /></summary>
+            <p>
+              В обычных пунктах выдачи заказов рядом с домом — Ozon, Яндекс Маркет или
+              Wildberries. Конкретный адрес подскажем при подтверждении брони.
+            </p>
+          </details>
         </div>
-      </section>
+      </div>
 
       {/* FINAL CTA */}
-      <section>
+      <div className="wrap sec">
         <div className="final">
           <h2>Возьмите нужную вещь рядом с домом</h2>
-          <p>
-            Выберите вещь и забронируйте — заберёте в ближайшем пункте выдачи и
-            вернёте туда же.
-          </p>
-          <button
-            className="btn btn--primary btn--lg"
-            onClick={() => {
-              track("final_cta");
-              document.getElementById("catalog")?.scrollIntoView();
-            }}
-          >
-            Выбрать вещь
+          <p>Выберите вещь и забронируйте — заберёте в ближайшем пункте выдачи и вернёте туда же.</p>
+          <button className="cta btn-orange" onClick={() => { track("final_cta"); scrollTo("catalog"); }}>
+            Выбрать вещь <Icon id="ic-arrow" size={21} />
           </button>
         </div>
-      </section>
+      </div>
 
       {/* FOOTER */}
-      <footer>
-        <div className="wrap footer__inner">
+      <footer className="foot">
+        <div className="wrap foot__row">
           <div>
-            <div className="brand" style={{ marginBottom: 8 }}>
-              <span className="brand__mark">◆</span>
-              <span>Рядом.Аренда</span>
+            <Brand />
+            <div className="foot__about" style={{ marginTop: 12 }}>
+              Аренда вещей в пункте выдачи рядом с домом. Пилотный проект — запускаемся
+              по районам. Оставьте заявку, сообщим, когда откроемся рядом с вами.
             </div>
-            <div>Аренда вещей в пункте выдачи рядом с домом.</div>
           </div>
-          <div style={{ maxWidth: 320 }}>
-            Пилотный проект. Мы проверяем спрос на аренду вещей в пунктах выдачи и
-            запускаемся по районам. Оставьте заявку — сообщим, когда откроемся рядом
-            с вами.
+          <div className="foot__cols">
+            <div className="foot__col">
+              <h4>Сервис</h4>
+              <div>
+                <a onClick={() => scrollTo("catalog")} style={{ cursor: "pointer" }}>Каталог</a>
+                <a href="#how">Как это работает</a>
+                <a onClick={() => scrollTo("catalog")} style={{ cursor: "pointer" }}>Пункты выдачи</a>
+              </div>
+            </div>
+            <div className="foot__col">
+              <h4>Помощь</h4>
+              <div>
+                <a href="#">Вопросы и ответы</a>
+                <a href="#">Правила аренды</a>
+                <a href="#">Поддержка</a>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
 
       {/* MODAL */}
       {modalItem && (
-        <div
-          className="overlay"
-          onClick={(e) => e.target === e.currentTarget && closeModal()}
-        >
+        <div className="overlay" onClick={(e) => e.target === e.currentTarget && closeModal()}>
           <div className="modal" role="dialog" aria-modal="true">
-            <button className="modal__close" aria-label="Закрыть" onClick={closeModal}>
-              ×
-            </button>
+            <button className="modal__close" aria-label="Закрыть" onClick={closeModal}>×</button>
 
             {step === "config" && (
               <>
                 <div className="modal__head">
-                  <Thumb src={`/items/${modalItem.id}.jpg`} emoji={modalItem.emoji} className="modal__emoji" />
+                  <Thumb src={`/items/${modalItem.id}.jpg`} emoji={modalItem.emoji} className="modal__media" />
                   <div>
                     <p className="modal__title">{modalItem.name}</p>
                     <span className="modal__cat">{modalItem.cat}</span>
@@ -496,14 +511,10 @@ export default function Page() {
 
                 <div className="field">
                   <label>На сколько дней?</label>
-                  <div className="days">
+                  <div className="chip-row">
                     {DAY_OPTIONS.map((d) => (
-                      <button
-                        key={d}
-                        className={`day-chip${days === d ? " day-chip--on" : ""}`}
-                        onClick={() => setDays(d)}
-                      >
-                        {d} {d === 1 ? "день" : d < 5 ? "дня" : "дней"}
+                      <button key={d} className={`day-chip${days === d ? " day-chip--on" : ""}`} onClick={() => setDays(d)}>
+                        {d} {daysWord(d)}
                       </button>
                     ))}
                   </div>
@@ -511,7 +522,7 @@ export default function Page() {
 
                 <div className="field">
                   <label>Пункт выдачи</label>
-                  <div className="days">
+                  <div className="chip-row">
                     {PVZ.map((p) => (
                       <button
                         key={p.name}
@@ -526,13 +537,11 @@ export default function Page() {
                 </div>
 
                 <div className="total">
-                  <span>Итого за {days} {days === 1 ? "день" : days < 5 ? "дня" : "дней"}</span>
-                  <span className="total__big">{fmt(dayPrice(modalItem.value) * days)} ₽</span>
+                  <span>Итого за {days} {daysWord(days)}</span>
+                  <b>{fmt(dayPrice(modalItem.value) * days)} ₽</b>
                 </div>
 
-                <button className="btn btn--primary btn--block btn--lg" onClick={confirmBooking}>
-                  Забронировать
-                </button>
+                <button className="cta btn-blue" onClick={confirmBooking}>Забронировать</button>
                 <p className="note">Оплата и залог картой при получении. Ничего подписывать не нужно.</p>
               </>
             )}
@@ -547,14 +556,14 @@ export default function Page() {
             {step === "error" && (
               <>
                 <div className="center-block">
-                  <div className="error-icon">!</div>
+                  <div className="err-icon">!</div>
                   <p style={{ fontWeight: 700, color: "var(--ink)", fontSize: 17, margin: "0 0 6px" }}>
                     Не получилось оформить бронь
                   </p>
                   <p style={{ margin: 0 }}>
-                    На стороне пункта выдачи возникла техническая ошибка. Ваша вещь
-                    ещё свободна — оставьте телефон, мы подтвердим бронь вручную и
-                    сообщим адрес пункта.
+                    На стороне пункта выдачи возникла техническая ошибка. Ваша вещь ещё
+                    свободна — оставьте телефон, мы подтвердим бронь вручную и сообщим
+                    адрес пункта.
                   </p>
                 </div>
                 <form onSubmit={submitLead} style={{ marginTop: 20 }}>
@@ -573,13 +582,7 @@ export default function Page() {
                   </div>
                   <div className="field">
                     <label>Как к вам обращаться (необязательно)</label>
-                    <input
-                      className="input"
-                      type="text"
-                      placeholder="Имя"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
+                    <input className="input" type="text" placeholder="Имя" value={name} onChange={(e) => setName(e.target.value)} />
                   </div>
                   <div className="field">
                     <label>Ваш район (необязательно)</label>
@@ -591,27 +594,23 @@ export default function Page() {
                       onChange={(e) => setDistrict(e.target.value)}
                     />
                   </div>
-                  <button className="btn btn--primary btn--block btn--lg" type="submit" disabled={sending}>
+                  <button className="cta btn-blue" type="submit" disabled={sending}>
                     {sending ? "Отправляем…" : "Подтвердить бронь по телефону"}
                   </button>
-                  <p className="note">Перезвоним, чтобы подтвердить бронь {modalItem.name}. Без спама.</p>
+                  <p className="note">Перезвоним, чтобы подтвердить бронь «{modalItem.name}». Без спама.</p>
                 </form>
               </>
             )}
 
             {step === "success" && (
               <div className="center-block" style={{ padding: "20px 0" }}>
-                <div className="success-icon">✓</div>
-                <p style={{ fontWeight: 700, color: "var(--ink)", fontSize: 18, margin: "0 0 6px" }}>
-                  Заявка принята
-                </p>
+                <div className="ok-icon">✓</div>
+                <p style={{ fontWeight: 700, color: "var(--ink)", fontSize: 18, margin: "0 0 6px" }}>Заявка принята</p>
                 <p style={{ margin: "0 0 20px" }}>
-                  Свяжемся с вами, чтобы подтвердить бронь <b>{modalItem.name}</b> и
-                  назвать адрес ближайшего пункта выдачи.
+                  Свяжемся с вами, чтобы подтвердить бронь <b>{modalItem.name}</b> и назвать
+                  адрес ближайшего пункта выдачи.
                 </p>
-                <button className="btn btn--ghost btn--block" onClick={closeModal}>
-                  Понятно
-                </button>
+                <button className="cta btn-white" onClick={closeModal}>Понятно</button>
               </div>
             )}
           </div>
