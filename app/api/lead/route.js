@@ -1,6 +1,8 @@
-// Приём заявок с лендинга и отправка их в Telegram.
+// Приём заявок с лендинга: запись в БД (для админки) + отправка в Telegram.
 // Ключи бота лежат в переменных окружения Vercel (см. .env.example),
 // в код не попадают.
+
+import { getRedis, K } from "@/lib/redis";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +35,22 @@ export async function POST(request) {
   const district = String(payload?.district ?? "").trim().slice(0, 120);
   const pickup = String(payload?.pickup ?? "").trim().slice(0, 40);
   const source = String(payload?.source ?? "").trim().slice(0, 40);
+
+  // Пишем заявку в БД (для админ-панели) независимо от Telegram.
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const record = JSON.stringify({ phone: phoneRaw, name, item, days, district, pickup, source, ts: Date.now() });
+      await Promise.all([
+        redis.incr(K.leads),
+        item ? redis.hincrby(K.leadsByItem, item, 1) : Promise.resolve(),
+        redis.lpush(K.recentLeads, record),
+        redis.ltrim(K.recentLeads, 0, 199),
+      ]);
+    } catch (err) {
+      console.error("[lead] redis error:", err);
+    }
+  }
 
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
