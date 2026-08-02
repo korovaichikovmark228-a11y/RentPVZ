@@ -53,3 +53,29 @@ export async function GET(_request, { params }) {
     return Response.json({ configured: true, error: true, visits: 0, bookClicks: 0, leads: 0, bookByItem: {}, leadsByItem: {}, visitsByDay: {}, recentLeads: [] });
   }
 }
+
+// Сброс всей статистики (по тому же секретному коду).
+export async function POST(_request, { params }) {
+  const code = params?.code;
+  const admin = process.env.ADMIN_CODE;
+  if (!admin || code !== admin) {
+    return new Response("Not found", { status: 404 });
+  }
+  const redis = getRedis();
+  if (!redis) return Response.json({ ok: false, configured: false });
+  try {
+    await redis.del(
+      K.visits,
+      K.visitsByDay,
+      K.bookClicks,
+      K.bookByItem,
+      K.leads,
+      K.leadsByItem,
+      K.recentLeads
+    );
+    return Response.json({ ok: true });
+  } catch (err) {
+    console.error("[stats] reset error:", err);
+    return Response.json({ ok: false }, { status: 500 });
+  }
+}
