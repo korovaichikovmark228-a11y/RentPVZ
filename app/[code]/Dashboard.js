@@ -76,6 +76,16 @@ export default function Dashboard({ code }) {
     }
   }, [code]);
 
+  const reset = useCallback(async () => {
+    if (!window.confirm("Обнулить всю статистику (посещения, клики, заявки)? Действие необратимо.")) return;
+    try {
+      await fetch(`/api/stats/${code}`, { method: "POST" });
+      await load();
+    } catch {
+      /* игнор */
+    }
+  }, [code, load]);
+
   useEffect(() => {
     load();
     const t = setInterval(load, 10000);
@@ -98,6 +108,9 @@ export default function Dashboard({ code }) {
             </span>
             <button onClick={load} style={{ border: `1px solid ${C.line}`, background: C.card, color: C.ink, fontWeight: 600, fontSize: 13, padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit" }}>
               Обновить
+            </button>
+            <button onClick={reset} style={{ border: `1px solid ${C.line}`, background: C.card, color: "#b23c00", fontWeight: 600, fontSize: 13, padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit" }}>
+              Сбросить
             </button>
           </div>
         </div>
