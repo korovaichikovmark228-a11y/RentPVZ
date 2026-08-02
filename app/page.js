@@ -144,6 +144,28 @@ export default function Page() {
 
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView();
 
+  // Своя отправка события в БД (для админ-панели), не мешает Vercel Analytics.
+  const sendTrack = (type, item) => {
+    try {
+      fetch("/api/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, item }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      /* игнор */
+    }
+  };
+
+  // Считаем посещение один раз за сессию вкладки.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (sessionStorage.getItem("visit_tracked")) return;
+    sessionStorage.setItem("visit_tracked", "1");
+    sendTrack("visit");
+  }, []);
+
   const openBooking = useCallback((item, source) => {
     setModalItem(item);
     setStep("config");
@@ -153,6 +175,7 @@ export default function Page() {
     setDistrict("");
     setFormErr("");
     track("open_booking", { item: item.name, source: source || "catalog" });
+    sendTrack("book_click", item.name);
   }, []);
 
   const closeModal = useCallback(() => {
