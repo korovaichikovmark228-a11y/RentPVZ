@@ -983,9 +983,13 @@ span.modal__media {
   .hero {
     grid-template-columns: 1fr;
   }
+  /* Ведём с текстом, визуал уходит под него и не раздувается */
   .hero__visual {
-    order: -1;
-    min-height: 220px;
+    order: 2;
+    min-height: 0;
+  }
+  .hero__grid {
+    min-height: 0;
   }
   .pgrid {
     grid-template-columns: 1fr 1fr;
@@ -1001,19 +1005,30 @@ span.modal__media {
   .iconrow {
     display: none;
   }
+  /* Больше воздуха между логотипом и категориями */
+  .mhead__row {
+    padding-bottom: 6px;
+  }
+  .chips {
+    padding-top: 14px;
+  }
 }
 @media (max-width: 560px) {
   .wrap {
     padding: 0 16px;
   }
   .hero {
-    padding: 28px 22px;
+    padding: 24px 18px;
   }
   .hero__title {
-    font-size: 32px;
+    font-size: 30px;
   }
+  /* Каталог и подборка — по 2 в ряд */
   .pgrid,
-  .pgrid--auto,
+  .pgrid--auto {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
   .how-grid,
   .why-items {
     grid-template-columns: 1fr;
@@ -1025,5 +1040,50 @@ span.modal__media {
   }
   .final {
     padding: 40px 22px;
+  }
+  /* Компактные карточки, чтобы 2-в-ряд смотрелись аккуратно */
+  .hero__tile img {
+    max-height: 130px;
+  }
+  .pcard__media {
+    padding: 12px;
+  }
+  .pcard__body {
+    padding: 12px 12px 14px;
+    gap: 3px;
+  }
+  .pcard__cat {
+    font-size: 11px;
+  }
+  .pcard__name {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  .pcard__price b {
+    font-size: 19px;
+  }
+  .pcard__unit {
+    font-size: 12px;
+  }
+  .pcard__buy {
+    font-size: 11px;
+  }
+  .pcard__cta {
+    height: 40px;
+    font-size: 13px;
+    border-radius: 10px;
+    margin-top: 10px;
+  }
+  .pcard__badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    top: 8px;
+    left: 8px;
+  }
+  .pcard__fav {
+    width: 28px;
+    height: 28px;
+    top: 8px;
+    right: 8px;
   }
 }
