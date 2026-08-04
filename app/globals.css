@@ -314,13 +314,13 @@ a {
   padding: 16px;
 }
 .hero__tile {
-  background: var(--bg);
+  background: #fff;
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 10px;
+  padding: 8px;
 }
 .hero__tile--wide {
   grid-column: span 2;
@@ -442,11 +442,12 @@ a {
 }
 .pcard__media {
   position: relative;
-  background: var(--bg);
+  background: #fff;
   aspect-ratio: 4 / 3;
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding: 8px;
+  overflow: hidden;
 }
 .pcard__img {
   width: 100%;
@@ -834,7 +835,8 @@ span.pcard__img {
   width: 62px;
   height: 62px;
   flex: none;
-  background: var(--bg);
+  background: #fff;
+  border: 1px solid var(--line);
   border-radius: 14px;
   display: grid;
   place-items: center;
@@ -1007,10 +1009,11 @@ span.modal__media {
   }
   /* Больше воздуха между логотипом и категориями */
   .mhead__row {
-    padding-bottom: 6px;
+    padding-top: 14px;
+    padding-bottom: 14px;
   }
   .chips {
-    padding-top: 14px;
+    padding-top: 16px;
   }
 }
 @media (max-width: 560px) {
@@ -1046,7 +1049,7 @@ span.modal__media {
     max-height: 130px;
   }
   .pcard__media {
-    padding: 12px;
+    padding: 6px;
   }
   .pcard__body {
     padding: 12px 12px 14px;
