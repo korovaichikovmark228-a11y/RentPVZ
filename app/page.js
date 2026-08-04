@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { track } from "@vercel/analytics";
 
 const ITEMS = [
@@ -14,8 +14,6 @@ const ITEMS = [
   { id: "carseat", name: "Автокресло", cat: "Детям", value: 10000, emoji: "🚗" },
   { id: "tent", name: "Палатка 4-местная", cat: "Отдых", value: 12000, emoji: "⛺" },
 ];
-
-const CATS = ["Все", "Инструмент", "Для дома", "Техника", "Детям", "Отдых"];
 
 const PVZ = [
   { name: "Ozon", logo: "/pvz/ozon.jpg" },
@@ -125,7 +123,6 @@ function ProductCard({ item, onBook }) {
 }
 
 export default function Page() {
-  const [activeCat, setActiveCat] = useState("Все");
   const [modalItem, setModalItem] = useState(null);
   const [step, setStep] = useState("config");
   const [days, setDays] = useState(1);
@@ -136,10 +133,7 @@ export default function Page() {
   const [sending, setSending] = useState(false);
   const [formErr, setFormErr] = useState("");
 
-  const filtered = useMemo(
-    () => (activeCat === "Все" ? ITEMS : ITEMS.filter((i) => i.cat === activeCat)),
-    [activeCat]
-  );
+  const filtered = ITEMS;
   const featured = ITEMS.slice(0, 3);
 
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView();
@@ -253,17 +247,6 @@ export default function Page() {
             <span className="iconbtn"><Icon id="ic-cart" size={21} /></span>
             <span className="iconbtn"><Icon id="ic-user" size={21} /></span>
           </div>
-        </div>
-        <div className="wrap chips">
-          {CATS.map((c) => (
-            <button
-              key={c}
-              className={`chip${activeCat === c ? " chip--on" : ""}`}
-              onClick={() => { setActiveCat(c); scrollTo("catalog"); }}
-            >
-              {c}
-            </button>
-          ))}
         </div>
       </header>
 
