@@ -1,5 +1,5 @@
 // Приём событий с лендинга: посещения и клики «Забронировать».
-import { getRedis, K, today } from "@/lib/redis";
+import { getRedis, K, today, uvDayKey } from "@/lib/redis";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,13 +14,26 @@ export async function POST(request) {
 
   const type = String(payload?.type ?? "");
   const item = String(payload?.item ?? "").trim().slice(0, 120);
+  const vid = String(payload?.vid ?? "").trim().slice(0, 80);
 
   const redis = getRedis();
   if (!redis) return Response.json({ ok: true, stored: false });
 
   try {
     if (type === "visit") {
-      await Promise.all([redis.incr(K.visits), redis.hincrby(K.visitsByDay, today(), 1)]);
+      // Считаем УНИКАЛЬНЫХ посетителей: id из localStorage браузера.
+      // Если id нет (редко) — используем разовый, чтобы не потерять заход.
+      const id = vid || `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const day = today();
+      const dayKey = uvDayKey(day);
+      const [newDay] = await Promise.all([
+        redis.sadd(dayKey, id), // 1 если этот id впервые за сегодня
+        redis.sadd(K.visitsUniq, id), // множество всех уникальных id
+        redis.expire(dayKey, 60 * 60 * 24 * 45), // дневные множества живут 45 дней
+      ]);
+      if (newDay === 1) await redis.hincrby(K.visitsUniqByDay, day, 1);
+      // Старый общий счётчик заходов оставляем для справки (не показываем).
+      redis.incr(K.visits).catch(() => {});
     } else if (type === "book_click") {
       const ops = [redis.incr(K.bookClicks)];
       if (item) ops.push(redis.hincrby(K.bookByItem, item, 1));
