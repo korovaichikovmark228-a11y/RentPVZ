@@ -20,12 +20,12 @@ export async function GET(_request, { params }) {
   try {
     const [visits, bookClicks, leads, bookByItem, leadsByItem, visitsByDay, recentRaw] =
       await Promise.all([
-        redis.get(K.visits),
+        redis.scard(K.visitsUniq),
         redis.get(K.bookClicks),
         redis.get(K.leads),
         redis.hgetall(K.bookByItem),
         redis.hgetall(K.leadsByItem),
-        redis.hgetall(K.visitsByDay),
+        redis.hgetall(K.visitsUniqByDay),
         redis.lrange(K.recentLeads, 0, 99),
       ]);
 
@@ -67,12 +67,21 @@ export async function POST(_request, { params }) {
     await redis.del(
       K.visits,
       K.visitsByDay,
+      K.visitsUniq,
+      K.visitsUniqByDay,
       K.bookClicks,
       K.bookByItem,
       K.leads,
       K.leadsByItem,
       K.recentLeads
     );
+    // Дневные множества уникальных id (m:uv:<дата>) — чистим по шаблону.
+    try {
+      const dayKeys = await redis.keys("m:uv:*");
+      if (dayKeys && dayKeys.length) await redis.del(...dayKeys);
+    } catch {
+      /* необязательно */
+    }
     return Response.json({ ok: true });
   } catch (err) {
     console.error("[stats] reset error:", err);
