@@ -27,6 +27,22 @@ const dayPrice = (value) => Math.round((value * DAY_RATE) / 10) * 10;
 const fmt = (n) => n.toLocaleString("ru-RU");
 const daysWord = (d) => (d === 1 ? "день" : d < 5 ? "дня" : "дней");
 
+// Постоянный id браузера для подсчёта уникальных посетителей.
+function getVisitorId() {
+  try {
+    let v = localStorage.getItem("rp_vid");
+    if (!v) {
+      v =
+        (typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID()) ||
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem("rp_vid", v);
+    }
+    return v;
+  } catch {
+    return "";
+  }
+}
+
 // SVG-иконки интерфейса
 function Icon({ id, size = 20, className, style }) {
   return (
@@ -139,12 +155,13 @@ export default function Page() {
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView();
 
   // Своя отправка события в БД (для админ-панели), не мешает Vercel Analytics.
+  // vid — постоянный id браузера, чтобы считать УНИКАЛЬНЫХ посетителей (сервер дедуплицирует).
   const sendTrack = (type, item) => {
     try {
       fetch("/api/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, item }),
+        body: JSON.stringify({ type, item, vid: getVisitorId() }),
         keepalive: true,
       }).catch(() => {});
     } catch {
@@ -152,11 +169,9 @@ export default function Page() {
     }
   };
 
-  // Считаем посещение один раз за сессию вкладки.
+  // Отмечаем заход. Уникальность считает сервер по vid, так что при повторных
+  // визитах число уникальных не растёт.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (sessionStorage.getItem("visit_tracked")) return;
-    sessionStorage.setItem("visit_tracked", "1");
     sendTrack("visit");
   }, []);
 
