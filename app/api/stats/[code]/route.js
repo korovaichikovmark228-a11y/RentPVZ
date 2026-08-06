@@ -54,8 +54,9 @@ export async function GET(_request, { params }) {
   }
 }
 
-// Сброс всей статистики (по тому же секретному коду).
-export async function POST(_request, { params }) {
+// Сброс статистики (по тому же секретному коду).
+// ?scope=uv — обнулить только уникальные заходы (клики и заявки не трогаем).
+export async function POST(request, { params }) {
   const code = params?.code;
   const admin = process.env.ADMIN_CODE;
   if (!admin || code !== admin) {
@@ -63,7 +64,31 @@ export async function POST(_request, { params }) {
   }
   const redis = getRedis();
   if (!redis) return Response.json({ ok: false, configured: false });
+
+  let scope = "all";
   try {
+    scope = new URL(request.url).searchParams.get("scope") || "all";
+  } catch {
+    /* дефолт all */
+  }
+
+  const clearDaySets = async () => {
+    try {
+      const dayKeys = await redis.keys("m:uv:*");
+      if (dayKeys && dayKeys.length) await redis.del(...dayKeys);
+    } catch {
+      /* необязательно */
+    }
+  };
+
+  try {
+    if (scope === "uv") {
+      // Только уникальные заходы
+      await redis.del(K.visits, K.visitsByDay, K.visitsUniq, K.visitsUniqByDay);
+      await clearDaySets();
+      return Response.json({ ok: true, scope: "uv" });
+    }
+    // Полный сброс
     await redis.del(
       K.visits,
       K.visitsByDay,
@@ -75,14 +100,8 @@ export async function POST(_request, { params }) {
       K.leadsByItem,
       K.recentLeads
     );
-    // Дневные множества уникальных id (m:uv:<дата>) — чистим по шаблону.
-    try {
-      const dayKeys = await redis.keys("m:uv:*");
-      if (dayKeys && dayKeys.length) await redis.del(...dayKeys);
-    } catch {
-      /* необязательно */
-    }
-    return Response.json({ ok: true });
+    await clearDaySets();
+    return Response.json({ ok: true, scope: "all" });
   } catch (err) {
     console.error("[stats] reset error:", err);
     return Response.json({ ok: false }, { status: 500 });
